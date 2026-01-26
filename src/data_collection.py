@@ -47,4 +47,5 @@ if __name__ == '__main__':
     for letter in ['A', 'B', 'C', 'D', 'E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
         input(f'Ready to record {letter}? Press Enter')
         collector.collect_letter(letter)
+
     print('Done!')
