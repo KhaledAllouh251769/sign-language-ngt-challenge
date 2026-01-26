@@ -44,7 +44,7 @@ class DataCollector:
 
 if __name__ == '__main__':
     collector = DataCollector()
-    for letter in ['A', 'B', 'C', 'D', 'E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']:
+    for letter in ['A', 'B', 'C', 'D', 'E','F','G','I','J','K','L','M','N','O','P','Q','R','S','T','V','W','Y']:
         input(f'Ready to record {letter}? Press Enter')
         collector.collect_letter(letter)
 
