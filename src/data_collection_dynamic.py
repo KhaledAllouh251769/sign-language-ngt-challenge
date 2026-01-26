@@ -94,6 +94,7 @@ if __name__ == '__main__':
     print("  H: Move hand LEFT -> CENTER -> RIGHT (side to side)")
     print("  J: Start TOP -> curve DOWN -> hook LEFT (J-shape)")
     print("  X: Finger STRAIGHT -> HALF-BENT -> HOOKED (hook motion)")
+    print("  U: 2 fingers straigt -> side ways -> two fngers back of hand")
     print("  Z: Draw Z: TOP-RIGHT -> DIAGONAL -> BOTTOM-LEFT")
     print("\nFor each letter:")
     print("  - Press SPACE at START position")
