@@ -11,7 +11,7 @@ class LetterClassifier:
     def __init__(self):
         self.reference_data = {}
         self.reference_data_dynamic = {}
-        self.dynamic_letters = ['H', 'J', 'X', 'Z']  # Define dynamic letters
+        self.dynamic_letters = ['H', 'J','U','X', 'Z']  # Define dynamic letters
         self.load_reference_data()
         self.load_dynamic_data()
     
@@ -109,7 +109,7 @@ class LetterClassifier:
         best_letter = None
         min_total_distance = float('inf')
         
-        # Compare to all dynamic reference sequences (ONLY H, J, X, Z)
+        # Compare to all dynamic reference sequences (ONLY H, J, U,X, Z)
         for letter, sequences in self.reference_data_dynamic.items():
             for ref_sequence in sequences:
                 total_distance = 0
