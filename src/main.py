@@ -1,0 +1,5 @@
+print('Sign Language Recognition System')
+print('Commands:')
+print('  python src/detection.py')
+print('  python src/data_collection.py')
+print('  streamlit run src/ui.py')
