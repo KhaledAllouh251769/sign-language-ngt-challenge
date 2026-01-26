@@ -85,7 +85,7 @@ class DynamicDataCollector:
 if __name__ == '__main__':
     collector = DynamicDataCollector()
     
-    dynamic_letters = ['H', 'J', 'X', 'Z']
+    dynamic_letters = ['H', 'J', 'U','X', 'Z']
     
     print("=" * 60)
     print("DYNAMIC LETTER RECORDING - Motion Capture")
