@@ -35,7 +35,8 @@ class DataCollector:
         cap.release()
         cv2.destroyAllWindows()
         if samples:
-            filepath = os.path.join(self.data_dir, f'{letter}.json')
+            person_name = input("Enter your name: ")
+            filepath = os.path.join(self.data_dir, f'{letter}_{person_name}.json')
             with open(filepath, 'w') as f:
                 json.dump(samples, f)
             print(f'Saved {len(samples)} samples')
