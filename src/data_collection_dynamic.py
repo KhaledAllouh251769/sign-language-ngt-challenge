@@ -98,8 +98,6 @@ class DynamicDataCollector:
         return len(all_samples)
 
 if __name__ == '__main__':
-    collector = DynamicDataCollector()
-    
     dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
     
     print("="*60)
@@ -110,16 +108,20 @@ if __name__ == '__main__':
     print("  - Perform the letter motion continuously")
     print("  - System captures many frames and averages them")
     print("  - Repeat 5 times per letter")
-    print("\nMotions:")
-    print("  H: Move hand left-center-right smoothly")
-    print("  J: Draw J-shape downward")
-    print("  U: Draw U-shape with two fingers")
-    print("  X: Hook and unhook finger")
-    print("  Z: Draw Z-shape in air")
     print("="*60)
     
     for letter in dynamic_letters:
         input(f'\nReady to record {letter}? Press Enter...')
+        
+        # Create NEW collector for each letter (fresh camera)
+        collector = DynamicDataCollector()
+        collector.person_name = collector.person_name  # Keep same name
         collector.collect_dynamic_letter(letter)
+        
+        # Small pause between letters
+        print('\nProcessing...')
+        import time
+        time.sleep(0.3)
+        cv2.waitKey(1)
     
     print('\n✅ All dynamic letters recorded!')
