@@ -10,6 +10,7 @@ from PIL import Image
 import sys
 import json
 import os
+import time
 sys.path.append('src')
 from detection import HandDetector
 from classification import LetterClassifier
@@ -38,10 +39,8 @@ def show_learn_mode():
     
     st.write(f'### Letter: {letter}')
     
-    # Show reference videos/instructions
     st.info('📹 Reference videos coming soon')
     
-    # Show which type of letter
     dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
     if letter in dynamic_letters:
         st.warning(f'⚡ {letter} is a DYNAMIC letter - involves movement')
@@ -52,15 +51,12 @@ def show_practice_mode(mirror_mode):
     st.header('🎯 Practice Mode')
     st.write('Show signs to the camera and get real-time feedback!')
     
-    # Start/Stop control
     run = st.checkbox('▶️ Start Camera', value=False)
     
     if run:
-        # Initialize detector and classifier
         detector = HandDetector()
         classifier = LetterClassifier()
         
-        # Create placeholders
         col1, col2 = st.columns([2, 1])
         
         with col1:
@@ -72,29 +68,24 @@ def show_practice_mode(mirror_mode):
             result_placeholder = st.empty()
             confidence_placeholder = st.empty()
         
-        # Open camera
         cap = cv2.VideoCapture(0)
         
         if not cap.isOpened():
-            st.error("❌ Cannot open camera! Check if camera is connected.")
+            st.error("❌ Cannot open camera!")
             return
         
-        # Process video
         while run:
             ret, frame = cap.read()
             if not ret:
                 st.error("Failed to read from camera")
                 break
             
-            # Detect hand
             landmarks, annotated_frame = detector.find_hands(frame, mirror_for_left_hand=mirror_mode)
             
-            # Classify if hand detected
             if landmarks:
                 letter, confidence = classifier.classify_letter(landmarks)
                 
                 if letter and confidence > 0.3:
-                    # Show detected letter
                     if confidence > 0.7:
                         result_placeholder.success(f"# ✅ {letter}")
                     elif confidence > 0.5:
@@ -102,7 +93,6 @@ def show_practice_mode(mirror_mode):
                     else:
                         result_placeholder.info(f"# 🤔 {letter}?")
                     
-                    # Show confidence bar
                     confidence_placeholder.progress(float(confidence))
                     confidence_placeholder.write(f"Confidence: {confidence*100:.0f}%")
                 else:
@@ -110,18 +100,14 @@ def show_practice_mode(mirror_mode):
             else:
                 result_placeholder.warning("🖐️ No hand detected")
             
-            # Convert BGR to RGB for display
             frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             frame_placeholder.image(frame_rgb, width=640)
-            
-            # Small delay
             cv2.waitKey(1)
         
         cap.release()
     else:
         st.info('👆 Check the box above to start the camera')
         
-        # Show instructions
         st.write('### 📖 Instructions:')
         st.write('1. Check "Start Camera" box')
         st.write('2. Make a sign from the NGT alphabet')
@@ -137,7 +123,7 @@ def show_record_mode():
     st.header('💾 Record Training Data')
     st.write('Add your own training samples to improve the system!')
     
-    # Initialize detector in session state
+    # Initialize detector
     if 'recording_detector' not in st.session_state:
         st.session_state.recording_detector = HandDetector()
     
@@ -147,20 +133,20 @@ def show_record_mode():
     col1, col2 = st.columns(2)
     
     with col1:
-        person_name = st.text_input('Your name:', value='', placeholder='Enter your name')
+        person_name = st.text_input('Your name:', placeholder='Enter your name')
     
     with col2:
         letter_to_record = st.selectbox('Letter to record:', 
                                         list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
     
-    # Check if dynamic letter
+    # Check if dynamic
     dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
     is_dynamic = letter_to_record in dynamic_letters
     
     if is_dynamic:
-        st.warning(f'⚡ {letter_to_record} is a DYNAMIC letter - perform the motion when recording')
+        st.warning(f'⚡ {letter_to_record} is DYNAMIC - perform the motion')
     else:
-        st.info(f'✋ {letter_to_record} is a STATIC letter - hold the position steady')
+        st.info(f'✋ {letter_to_record} is STATIC - hold steady')
     
     st.write('---')
     
@@ -179,31 +165,52 @@ def show_record_mode():
         with open(filepath, 'r') as f:
             existing_samples = json.load(f)
     
-    st.info(f'📊 Current samples for **{letter_to_record}_{person_name}**: {len(existing_samples)}')
+    st.metric('Samples for this letter', len(existing_samples))
     
-    # Recording button
-    if st.button('🔴 Record Sample', type='primary'):
+    # Recording process
+    st.write(f'### Ready to Record: **{letter_to_record}**')
+    
+    if st.button('🎬 Record New Sample', type='primary'):
+        # Create placeholders
+        camera_placeholder = st.empty()
+        countdown_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+        
+        # Open camera
         cap = cv2.VideoCapture(0)
         
         if not cap.isOpened():
             st.error("❌ Cannot open camera!")
             return
         
-        # Placeholders
-        camera_placeholder = st.empty()
-        progress_placeholder = st.empty()
-        status_placeholder = st.empty()
-        
-        status_placeholder.warning('📹 Recording in progress...')
-        
-        collected_frames = []
-        max_frames = 30 if not is_dynamic else 60
-        
         # Warm up camera
         for _ in range(5):
             cap.read()
         
-        # Collect frames
+        # Show preview with countdown
+        countdown_placeholder.warning('📹 Camera opened - Get ready!')
+        
+        for countdown in range(3, 0, -1):
+            ret, frame = cap.read()
+            if ret:
+                landmarks, annotated_frame = detector.find_hands(frame)
+                frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+                
+                # Add countdown text
+                cv2.putText(frame_rgb, f'Starting in {countdown}...', (10, 50),
+                           cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 4)
+                
+                camera_placeholder.image(frame_rgb, width=640)
+            time.sleep(0.8)
+        
+        countdown_placeholder.empty()
+        status_placeholder.warning('🔴 RECORDING NOW - Make the sign!')
+        
+        # Record frames
+        collected_frames = []
+        max_frames = 30 if not is_dynamic else 60
+        
         for i in range(max_frames):
             ret, frame = cap.read()
             if not ret:
@@ -214,89 +221,69 @@ def show_record_mode():
             if landmarks:
                 collected_frames.append(landmarks)
             
-            # Show live feed
             frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             
-            # Add text overlay
-            cv2.putText(frame_rgb, f'Recording {letter_to_record}...', (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            cv2.putText(frame_rgb, f'Frame {i+1}/{max_frames}', (10, 70),
+            # Add recording text
+            cv2.putText(frame_rgb, '🔴 RECORDING', (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+            cv2.putText(frame_rgb, f'{len(collected_frames)} frames captured', (10, 80),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
             
             camera_placeholder.image(frame_rgb, width=640)
             
-            # Update progress
             progress = (i + 1) / max_frames
             progress_placeholder.progress(progress)
+            
+            cv2.waitKey(1)
         
+        # CLOSE CAMERA IMMEDIATELY
         cap.release()
         cv2.destroyAllWindows()
+        time.sleep(0.2)
         
         # Process frames
+        camera_placeholder.empty()
+        progress_placeholder.empty()
+        
         if len(collected_frames) >= 10:
             if is_dynamic:
-                # Average for dynamic letters
                 new_sample = np.mean(collected_frames, axis=0).tolist()
                 status_placeholder.success(f'✅ Averaged {len(collected_frames)} frames!')
             else:
-                # Use median for static letters
                 median_idx = len(collected_frames) // 2
                 new_sample = collected_frames[median_idx]
-                status_placeholder.success(f'✅ Captured sample from {len(collected_frames)} frames!')
-            
-            # Add to existing
-            existing_samples.append(new_sample)
+                status_placeholder.success(f'✅ Captured from {len(collected_frames)} frames!')
             
             # Save
+            existing_samples.append(new_sample)
             with open(filepath, 'w') as f:
                 json.dump(existing_samples, f)
             
-            st.success(f'💾 Saved! Total samples: **{len(existing_samples)}**')
+            st.success(f'💾 SAVED! Total samples: **{len(existing_samples)}**')
             
-            # Suggestions
             if len(existing_samples) < 5:
-                st.info(f'💡 Tip: Record {5 - len(existing_samples)} more samples for better accuracy')
+                st.info(f'💡 Record {5 - len(existing_samples)} more samples')
             elif len(existing_samples) == 5:
                 st.balloons()
-                st.success('🎉 Perfect! 5 samples recorded!')
+                st.success('🎉 Perfect! 5 samples complete!')
             else:
-                st.success(f'🌟 Excellent! {len(existing_samples)} samples recorded!')
-            
-            # Clear camera placeholder
-            camera_placeholder.empty()
-            progress_placeholder.empty()
+                st.success(f'🌟 Excellent! {len(existing_samples)} samples!')
             
         else:
-            status_placeholder.error(f'❌ Only captured {len(collected_frames)} frames with hand visible')
-            st.error('Please make sure your hand is clearly visible in the camera')
+            status_placeholder.error(f'❌ Only {len(collected_frames)} frames captured')
+            st.error('Hand not visible enough - try again!')
     
-    # Show all recorded data
+    # Instructions
     st.write('---')
-    if st.button('📊 View All Training Data'):
-        try:
-            classifier = LetterClassifier()
-            
-            st.write('### All Training Data:')
-            
-            col1, col2, col3 = st.columns(3)
-            letters = sorted(classifier.reference_data.keys())
-            
-            for i, letter in enumerate(letters):
-                samples = len(classifier.reference_data[letter])
-                
-                with [col1, col2, col3][i % 3]:
-                    if samples >= 15:
-                        st.success(f'{letter}: {samples} ✅')
-                    elif samples >= 10:
-                        st.warning(f'{letter}: {samples} ⚠️')
-                    else:
-                        st.error(f'{letter}: {samples} ❌')
-            
-            total = sum(len(s) for s in classifier.reference_data.values())
-            st.metric('Total Samples', total)
-            
-        except Exception as e:
-            st.error(f'Error: {e}')
+    st.write('### 📝 Instructions:')
+    st.write('1. Enter your name and select letter')
+    st.write('2. Click "Record New Sample"')
+    st.write('3. Camera opens with 3-second countdown')
+    st.write('4. Make the sign clearly')
+    st.write('5. Recording lasts 1-2 seconds')
+    st.write('6. Camera closes automatically')
+    st.write('7. Sample is saved')
+    st.write('8. Click again to add more samples')
 
 if __name__ == '__main__':
     main()
