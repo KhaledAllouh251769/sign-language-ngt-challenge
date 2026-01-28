@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from PIL import Image
 import sys
+import json
+import os
 sys.path.append('src')
 from detection import HandDetector
 from classification import LetterClassifier
@@ -112,7 +114,7 @@ def show_practice_mode(mirror_mode):
             frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
             frame_placeholder.image(frame_rgb, width=640)
             
-            # Small delay to prevent freezing
+            # Small delay
             cv2.waitKey(1)
         
         cap.release()
@@ -133,23 +135,148 @@ def show_practice_mode(mirror_mode):
 
 def show_record_mode():
     st.header('💾 Record Training Data')
-    st.write('Help improve the system by adding more training samples!')
+    st.write('Add your own training samples to improve the system!')
     
-    st.warning('⚠️ Feature coming soon - use data_collection.py script for now')
+    # Initialize detector in session state
+    if 'recording_detector' not in st.session_state:
+        st.session_state.recording_detector = HandDetector()
     
-    st.write('### How to add training data:')
-    st.code('''
-# In Anaconda Prompt:
-conda activate signlang
-python src/data_collection.py
-    ''', language='bash')
+    detector = st.session_state.recording_detector
     
-    # Show current data stats
-    if st.button('📊 Show Current Training Data'):
+    # User inputs
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        person_name = st.text_input('Your name:', value='', placeholder='Enter your name')
+    
+    with col2:
+        letter_to_record = st.selectbox('Letter to record:', 
+                                        list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'))
+    
+    # Check if dynamic letter
+    dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
+    is_dynamic = letter_to_record in dynamic_letters
+    
+    if is_dynamic:
+        st.warning(f'⚡ {letter_to_record} is a DYNAMIC letter - perform the motion when recording')
+    else:
+        st.info(f'✋ {letter_to_record} is a STATIC letter - hold the position steady')
+    
+    st.write('---')
+    
+    if not person_name:
+        st.warning('⚠️ Please enter your name first')
+        return
+    
+    # Check existing samples
+    data_dir = 'data/reference'
+    os.makedirs(data_dir, exist_ok=True)
+    filename = f'{letter_to_record}_{person_name}.json'
+    filepath = os.path.join(data_dir, filename)
+    
+    existing_samples = []
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            existing_samples = json.load(f)
+    
+    st.info(f'📊 Current samples for **{letter_to_record}_{person_name}**: {len(existing_samples)}')
+    
+    # Recording button
+    if st.button('🔴 Record Sample', type='primary'):
+        cap = cv2.VideoCapture(0)
+        
+        if not cap.isOpened():
+            st.error("❌ Cannot open camera!")
+            return
+        
+        # Placeholders
+        camera_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        status_placeholder = st.empty()
+        
+        status_placeholder.warning('📹 Recording in progress...')
+        
+        collected_frames = []
+        max_frames = 30 if not is_dynamic else 60
+        
+        # Warm up camera
+        for _ in range(5):
+            cap.read()
+        
+        # Collect frames
+        for i in range(max_frames):
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            landmarks, annotated_frame = detector.find_hands(frame)
+            
+            if landmarks:
+                collected_frames.append(landmarks)
+            
+            # Show live feed
+            frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+            
+            # Add text overlay
+            cv2.putText(frame_rgb, f'Recording {letter_to_record}...', (10, 30),
+                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.putText(frame_rgb, f'Frame {i+1}/{max_frames}', (10, 70),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+            
+            camera_placeholder.image(frame_rgb, width=640)
+            
+            # Update progress
+            progress = (i + 1) / max_frames
+            progress_placeholder.progress(progress)
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        # Process frames
+        if len(collected_frames) >= 10:
+            if is_dynamic:
+                # Average for dynamic letters
+                new_sample = np.mean(collected_frames, axis=0).tolist()
+                status_placeholder.success(f'✅ Averaged {len(collected_frames)} frames!')
+            else:
+                # Use median for static letters
+                median_idx = len(collected_frames) // 2
+                new_sample = collected_frames[median_idx]
+                status_placeholder.success(f'✅ Captured sample from {len(collected_frames)} frames!')
+            
+            # Add to existing
+            existing_samples.append(new_sample)
+            
+            # Save
+            with open(filepath, 'w') as f:
+                json.dump(existing_samples, f)
+            
+            st.success(f'💾 Saved! Total samples: **{len(existing_samples)}**')
+            
+            # Suggestions
+            if len(existing_samples) < 5:
+                st.info(f'💡 Tip: Record {5 - len(existing_samples)} more samples for better accuracy')
+            elif len(existing_samples) == 5:
+                st.balloons()
+                st.success('🎉 Perfect! 5 samples recorded!')
+            else:
+                st.success(f'🌟 Excellent! {len(existing_samples)} samples recorded!')
+            
+            # Clear camera placeholder
+            camera_placeholder.empty()
+            progress_placeholder.empty()
+            
+        else:
+            status_placeholder.error(f'❌ Only captured {len(collected_frames)} frames with hand visible')
+            st.error('Please make sure your hand is clearly visible in the camera')
+    
+    # Show all recorded data
+    st.write('---')
+    if st.button('📊 View All Training Data'):
         try:
             classifier = LetterClassifier()
             
-            st.write('### Current Training Data:')
+            st.write('### All Training Data:')
             
             col1, col2, col3 = st.columns(3)
             letters = sorted(classifier.reference_data.keys())
@@ -159,17 +286,17 @@ python src/data_collection.py
                 
                 with [col1, col2, col3][i % 3]:
                     if samples >= 15:
-                        st.success(f'{letter}: {samples} samples ✅')
+                        st.success(f'{letter}: {samples} ✅')
                     elif samples >= 10:
-                        st.warning(f'{letter}: {samples} samples ⚠️')
+                        st.warning(f'{letter}: {samples} ⚠️')
                     else:
-                        st.error(f'{letter}: {samples} samples ❌')
+                        st.error(f'{letter}: {samples} ❌')
             
-            total_samples = sum(len(samples) for samples in classifier.reference_data.values())
-            st.info(f'**Total samples: {total_samples}**')
+            total = sum(len(s) for s in classifier.reference_data.values())
+            st.metric('Total Samples', total)
             
         except Exception as e:
-            st.error(f'Error loading data: {e}')
+            st.error(f'Error: {e}')
 
 if __name__ == '__main__':
     main()
