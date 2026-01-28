@@ -1,113 +1,125 @@
 """
-Dynamic letter data collection (H, J, X, Z)
-Author: Team
+Dynamic letter collection - Averaging approach
 """
 
 import cv2
 import json
 import os
+import numpy as np
+import time
 from detection import HandDetector
 
 class DynamicDataCollector:
     def __init__(self):
         self.person_name = input("Enter your name: ")
         self.detector = HandDetector()
-        self.data_dir = 'data/reference_dynamic'
+        self.data_dir = 'data/reference'  # SAME folder as static!
         os.makedirs(self.data_dir, exist_ok=True)
     
     def collect_dynamic_letter(self, letter):
         cap = cv2.VideoCapture(0)
-        sequences = []
+        all_samples = []
         
-        print(f'\nRecording DYNAMIC letter: {letter}')
-        print('For each sequence, press SPACE at: START -> MIDDLE -> END')
-        print('Need 5 complete sequences (15 total captures)')
-        print('Press Q to finish')
+        print(f'\nRecording letter: {letter} (DYNAMIC)')
+        print('For each sample:')
+        print('  1. Press SPACE to start')
+        print('  2. Perform the motion continuously for 2 seconds')
+        print('  3. System will average all frames')
+        print('Need 5 samples total')
         
-        current_sequence = []
-        sequence_count = 0
-        
-        while sequence_count < 5:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        for sample_num in range(5):
+            print(f'\n--- Sample {sample_num + 1}/5 ---')
+            input('Press Enter when ready...')
             
-            landmarks, annotated_frame = self.detector.find_hands(frame)
+            frames_collected = []
+            recording = False
+            start_time = None
             
-            position_in_sequence = len(current_sequence)
-            position_names = ['START', 'MIDDLE', 'END']
-            current_pos = position_names[position_in_sequence] if position_in_sequence < 3 else 'COMPLETE'
-            
-            text1 = f'{letter} - Sequence {sequence_count + 1}/5'
-            text2 = f'Position: {current_pos} ({position_in_sequence}/3)'
-            
-            cv2.putText(annotated_frame, text1, (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(annotated_frame, text2, (10, 70),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
-            cv2.putText(annotated_frame, 'SPACE=Capture Q=Finish', (10, 110),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            
-            cv2.imshow('Dynamic Letter Recording', annotated_frame)
-            
-            key = cv2.waitKey(1) & 0xFF
-            
-            if key == ord(' ') and landmarks:
-                current_sequence.append(landmarks)
-                print(f'  Captured {current_pos}')
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
                 
-                if len(current_sequence) == 3:
-                    sequences.append(current_sequence)
-                    sequence_count += 1
-                    print(f'  ✅ Sequence {sequence_count}/5 complete!')
-                    current_sequence = []
+                landmarks, annotated_frame = self.detector.find_hands(frame)
+                
+                if not recording:
+                    cv2.putText(annotated_frame, f'{letter} - Sample {sample_num + 1}/5',
+                               (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    cv2.putText(annotated_frame, 'Press SPACE to start 2-sec recording',
+                               (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                else:
+                    elapsed = time.time() - start_time
+                    remaining = 2.0 - elapsed
                     
-            elif key == ord('q'):
-                break
+                    if remaining > 0:
+                        cv2.putText(annotated_frame, f'RECORDING... {remaining:.1f}s',
+                                   (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                        cv2.putText(annotated_frame, f'Frames: {len(frames_collected)}',
+                                   (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+                        cv2.putText(annotated_frame, 'Keep moving!',
+                                   (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                        
+                        if landmarks:
+                            frames_collected.append(landmarks)
+                    else:
+                        break
+                
+                cv2.imshow('Dynamic Letter Recording', annotated_frame)
+                
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord(' ') and not recording:
+                    recording = True
+                    start_time = time.time()
+                    print('  Recording started! Perform the motion...')
+                elif key == ord('q'):
+                    cap.release()
+                    cv2.destroyAllWindows()
+                    return 0
+            
+            # Average all collected frames
+            if len(frames_collected) > 0:
+                averaged = np.mean(frames_collected, axis=0).tolist()
+                all_samples.append(averaged)
+                print(f'  ✓ Averaged {len(frames_collected)} frames into 1 sample')
+            else:
+                print('  ⚠️ No frames captured, retrying...')
+                sample_num -= 1
         
         cap.release()
         cv2.destroyAllWindows()
         
-        if sequences:
-            data = {
-                'letter': letter,
-                'type': 'dynamic',
-                'person': self.person_name,
-                'sequences': sequences
-            }
+        # Save averaged samples (SAME format as static letters!)
+        if all_samples:
             filepath = os.path.join(self.data_dir, f'{letter}_{self.person_name}.json')
             with open(filepath, 'w') as f:
-                json.dump(data, f)
-            print(f'✅ Saved {len(sequences)} motion sequences for {letter}\n')
+                json.dump(all_samples, f)
+            print(f'✅ Saved {len(all_samples)} averaged samples for {letter}')
         
-        return len(sequences)
+        return len(all_samples)
 
 if __name__ == '__main__':
     collector = DynamicDataCollector()
     
-    dynamic_letters = ['H', 'J', 'U','X', 'Z']
+    dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
     
-    print("=" * 60)
-    print("DYNAMIC LETTER RECORDING - Motion Capture")
-    print("=" * 60)
-    print("\nMotion Instructions:")
-    print("  H: Move hand LEFT -> CENTER -> RIGHT (side to side)")
-    print("  J: Start TOP -> curve DOWN -> hook LEFT (J-shape)")
-    print("  X: Finger STRAIGHT -> HALF-BENT -> HOOKED (hook motion)")
-    print("  U: 2 fingers straigt -> side ways -> two fngers back of hand")
-    print("  Z: Draw Z: TOP-RIGHT -> DIAGONAL -> BOTTOM-LEFT")
-    print("\nFor each letter:")
-    print("  - Press SPACE at START position")
-    print("  - Press SPACE at MIDDLE position")
-    print("  - Press SPACE at END position")
-    print("  - Repeat 5 times")
-    print("=" * 60)
+    print("="*60)
+    print("DYNAMIC LETTER RECORDING")
+    print("="*60)
+    print("\nHow it works:")
+    print("  - Press SPACE to start 2-second recording")
+    print("  - Perform the letter motion continuously")
+    print("  - System captures many frames and averages them")
+    print("  - Repeat 5 times per letter")
+    print("\nMotions:")
+    print("  H: Move hand left-center-right smoothly")
+    print("  J: Draw J-shape downward")
+    print("  U: Draw U-shape with two fingers")
+    print("  X: Hook and unhook finger")
+    print("  Z: Draw Z-shape in air")
+    print("="*60)
     
     for letter in dynamic_letters:
         input(f'\nReady to record {letter}? Press Enter...')
         collector.collect_dynamic_letter(letter)
     
-    print('\n' + "=" * 60)
-    print('✅ All dynamic letters recorded!')
-    print(f'Files saved in: data/reference_dynamic/')
-    print("=" * 60)
+    print('\n✅ All dynamic letters recorded!')
