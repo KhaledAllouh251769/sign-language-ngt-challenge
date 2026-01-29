@@ -39,13 +39,34 @@ def show_learn_mode():
     
     st.write(f'### Letter: {letter}')
     
-    st.info('📹 Reference videos coming soon')
-    
+    # Show letter type
     dynamic_letters = ['H', 'J', 'U', 'X', 'Z']
     if letter in dynamic_letters:
         st.warning(f'⚡ {letter} is a DYNAMIC letter - involves movement')
     else:
         st.success(f'✋ {letter} is a STATIC letter - hold the position')
+    
+    st.write('---')
+    
+    # Show YOUR video for this letter
+    video_path = f'data/videos/{letter}.mov'
+    
+    if os.path.exists(video_path):
+        st.write(f'### 🎥 How to Sign {letter}:')
+        
+        # Read and display .mov video file
+        video_file = open(video_path, 'rb')
+        video_bytes = video_file.read()
+        st.video(video_bytes)
+        video_file.close()
+        
+    else:
+        st.warning(f'⚠️ Video for {letter} not found')
+        st.info(f'Expected location: {video_path}')
+        
+        # Fallback to YouTube
+        st.write('### 📹 General Tutorial:')
+        st.video('https://youtu.be/C3n_B5UGBKs')
 
 def show_practice_mode(mirror_mode):
     st.header('🎯 Practice Mode')
