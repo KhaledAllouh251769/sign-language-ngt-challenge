@@ -196,7 +196,7 @@ See `requirements.txt` for exact versions.
 ### Why Template Matching Instead of Deep Learning?
 
 **Template matching (K-NN)** was chosen for several reasons:
-1. **Time constraint:** One-week project timeline
+1. **Time constraint:** two-week project timeline
 2. **Data size:** 390 samples is sufficient for template matching but insufficient for neural networks (which typically need 1000+ samples)
 3. **Simplicity:** Easier to implement, debug, and understand
 4. **Interpretability:** Clear why a prediction was made (closest match)
@@ -323,11 +323,7 @@ Educational project - Breda University of Applied Sciences
 
 ---
 
-## 📧 Contact
 
-For questions or feedback about this project:
-- GitHub: [KhaledAllouh251769](https://github.com/KhaledAllouh251769)
-- Repository: [sign-language-ngt-challenge](https://github.com/KhaledAllouh251769/sign-language-ngt-challenge)
 
 ---
 
