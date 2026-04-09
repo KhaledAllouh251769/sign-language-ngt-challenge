@@ -7,21 +7,42 @@ Real-time fingerspelling detection tool for Nederlandse Gebarentaal (Dutch Sign 
 This system recognizes Dutch Sign Language fingerspelling in real-time using:
 - **MediaPipe** for hand landmark detection
 - **Template matching** for letter classification
-- **Streamlit** for user-friendly web interface
+- **Flask + HTML/CSS/JS** for a custom web interface (upgraded from Streamlit)
 
-Recognizes all 26 letters (A-Z) with 70-80% accuracy, including both static and dynamic letters.
+Recognizes all 26 letters (A-Z) including both static and dynamic letters.
 
-**Developed in 2 weeks as part of the ADS&AI Block B Challenge.**
+**Originally developed in 2 weeks as part of the ADS&AI Block B Challenge. Extended in Block C/D with new features.**
 
 ---
 
 ## 👥 Team
 
 - **Khaled Allouh** - Hand Detection Module
-- **Ali Berk** - Data Collection & Classification  
+- **Ali Berk** - Data Collection & Classification
 - **Abi Parodi** - User Interface
 
-Breda University of Applied Sciences | ADS&AI Program | Block B Challenge | 2-Week Project
+Breda University of Applied Sciences | ADS&AI Program | Block B/C Challenge
+
+---
+
+## 🆕 What's New (Block C/D Extension)
+
+### ✍️ Sentence Builder
+- Select a letter on the on-screen keyboard, then sign it with your hand
+- Live confidence score shown in real time (green = confident, amber = unsure, red = wrong)
+- Progress bar fills as you hold the correct sign — letter is added automatically once full
+- Space, Delete, Clear, and Copy buttons for full sentence control
+
+### ♿ Accessibility Features
+- **4 colour themes:** Default (dark purple), High Contrast (black/yellow), Deuteranopia (blue palette), Protanopia (amber palette)
+- **Adjustable font size:** Slider from 14px to 26px, resizes text across the entire app
+- **Mirror mode:** Toggle for left-handed users
+
+### 🌐 New Interface — Flask + HTML/CSS/JS
+- Replaced Streamlit with a custom Flask web app for full UI control
+- Camera runs directly in the browser via MediaPipe JS — no more page reloading or flickering
+- Dark themed, custom fonts, smooth animations
+- Single page app — no refreshes between actions
 
 ---
 
@@ -32,6 +53,7 @@ Breda University of Applied Sciences | ADS&AI Program | Block B Challenge | 2-We
 - Python 3.11 or higher
 - Webcam/camera
 - Windows, Mac, or Linux
+- Google Chrome (recommended for camera/MediaPipe support)
 
 ### Installation
 
@@ -54,54 +76,62 @@ pip install -r requirements.txt
 
 ### Running the Application
 
-**Main Application (Web Interface):**
+**New Flask App (recommended):**
+```bash
+conda activate signlang
+cd ngt_flask
+python app.py
+```
+Then open **http://localhost:5000** in Chrome.
+
+**Legacy Streamlit App (still works):**
 ```bash
 conda activate signlang
 streamlit run src/ui.py
 ```
 
-Your browser will automatically open to `http://localhost:8501`
-
-**Alternative: Test Individual Modules:**
+**Test individual modules:**
 ```bash
-# Test hand detection
-python src/detection.py
+python src/detection.py          # test hand detection
+python src/classification.py     # test classifier
+python src/test_classification.py # live recognition test
+```
 
-# Test classification
-python src/classification.py
-
-# Test live recognition
-python src/test_classification.py
+**Collect training data:**
+```bash
+python src/data_collection.py          # static letters
+python src/data_collection_dynamic.py  # dynamic letters (H,J,U,X,Z)
 ```
 
 ---
 
 ## 📖 How to Use
 
-### Practice Mode (Main Feature)
+### Sentence Builder (New)
 
-1. Open the application: `streamlit run src/ui.py`
-2. Select **"Practice"** from the sidebar
-3. Check the **"Start Camera"** box
-4. Make signs from the NGT alphabet
-5. See real-time detection results with confidence scores
-6. Optional: Enable **"Mirror Mode"** in sidebar if you're left-handed
+1. Open the app at `http://localhost:5000`
+2. Go to **Sentence** mode
+3. Click a letter on the keyboard
+4. Sign that letter in front of your camera — hold until the progress bar fills
+5. The letter is added to your sentence automatically
+6. Use Space / Delete / Clear / Copy buttons as needed
+
+### Practice Mode
+
+1. Go to **Practice** mode
+2. Click **Start Camera**
+3. Sign any letter — see the detected letter and confidence in real time
 
 ### Learn Mode
 
-1. Select **"Learn"** from the sidebar
-2. Choose a letter from the dropdown (A-Z)
-3. Watch reference videos showing how to sign that letter
-4. See whether the letter is static or dynamic
+1. Go to **Learn** mode
+2. Click any letter to see how to sign it and whether it's static or dynamic
 
-### Record Mode
+### Record Mode (Streamlit only)
 
-1. Select **"Record"** from the sidebar
-2. Enter your name
-3. Select the letter you want to record
-4. Click **"Record New Sample"**
-5. Follow the countdown and make the sign clearly
-6. Your sample is automatically saved to improve the system
+1. Run `streamlit run src/ui.py`
+2. Go to **Record** mode
+3. Enter your name, select a letter, click Record
 
 ---
 
@@ -109,19 +139,27 @@ python src/test_classification.py
 
 ```
 sign-language-ngt-challenge/
+├── ngt_flask/                        # New Flask web app
+│   ├── app.py                        # Flask backend + classification API
+│   ├── requirements.txt              # Flask-specific deps
+│   ├── templates/
+│   │   └── index.html                # Single page frontend
+│   └── static/
+│       ├── css/style.css             # Full custom stylesheet
+│       └── js/app.js                 # MediaPipe + camera + UI logic
 ├── src/
-│   ├── detection.py              # Hand landmark detection (MediaPipe)
-│   ├── classification.py         # Letter recognition algorithm
-│   ├── ui.py                     # Streamlit web interface
-│   ├── data_collection.py        # Record static letters
-│   ├── data_collection_dynamic.py # Record dynamic letters (H,J,U,X,Z)
-│   └── test_classification.py    # Testing script
+│   ├── detection.py                  # Hand landmark detection (MediaPipe)
+│   ├── classification.py             # Letter recognition algorithm
+│   ├── ui.py                         # Legacy Streamlit interface
+│   ├── data_collection.py            # Record static letters
+│   ├── data_collection_dynamic.py    # Record dynamic letters
+│   └── test_classification.py        # Live testing script
 ├── data/
-│   ├── reference/                # Training data (JSON files)
-│   └── videos/                   # Tutorial videos (.mov files)
-├── requirements.txt              # Python dependencies
-├── .gitignore                   # Git ignore rules
-└── README.md                    # This file
+│   ├── reference/                    # Training data (JSON files)
+│   └── videos/                       # Tutorial videos (.mov files)
+├── requirements.txt                  # Python dependencies
+├── .gitignore
+└── README.md
 ```
 
 ---
@@ -129,7 +167,7 @@ sign-language-ngt-challenge/
 ## 🔧 Technical Approach
 
 ### 1. Hand Detection
-- **Technology:** Google MediaPipe Hand Landmarker
+- **Technology:** Google MediaPipe Hand Landmarker (Python + JS)
 - **Output:** 21 (x, y, z) landmark points per hand
 - **Performance:** 15-20 FPS on standard laptop CPU
 
@@ -137,7 +175,6 @@ sign-language-ngt-challenge/
 - **Method:** Team-recorded custom dataset
 - **Size:** 390+ samples (26 letters × 15 samples average)
 - **Format:** JSON files containing landmark coordinates
-- **Contributors:** 3 team members, multiple recording sessions
 
 ### 3. Classification Algorithm
 - **Method:** Template matching (K-Nearest Neighbors approach)
@@ -146,17 +183,21 @@ sign-language-ngt-challenge/
   2. Calculate Euclidean distance to all reference samples
   3. Return closest match with confidence score
   4. Apply smoothing buffer (5-frame average)
-- **Accuracy:** 70-80% across all letters
 
 ### 4. Dynamic Letter Handling
 - **Letters:** H, J, U, X, Z (involve movement)
-- **Method:** Frame averaging approach
-- **Process:** Capture 60 frames during motion, average into single representative position
+- **Method:** Frame averaging — capture frames during motion, average into single representative position
 
-### 5. Mirror Mode
-- **Purpose:** Support left-handed users
-- **Method:** Flip x-coordinates (new_x = 1.0 - old_x)
-- **Result:** Training data from right hands works for left hands
+### 5. Sentence Builder Architecture
+- Browser captures webcam frames via MediaPipe JS
+- Landmarks sent to Flask `/classify` endpoint via fetch API
+- Flask runs the Python classifier and returns letter + confidence
+- JS updates UI in real time — no page reloads
+
+### 6. Accessibility Implementation
+- CSS custom properties (`--accent`, `--bg`, `--text`, etc.) power all themes
+- Theme switching updates `data-theme` attribute on `<html>` — instant, no reload
+- Font size slider updates `--font-size` CSS variable globally
 
 ---
 
@@ -166,169 +207,112 @@ sign-language-ngt-challenge/
 ✅ All 26 NGT letters (A-Z)
 ✅ Static and dynamic letter support
 ✅ Left-hand and right-hand support (mirror mode)
-✅ Confidence scoring
-✅ Web-based interface (no installation for end users)
-✅ Three modes: Learn, Practice, Record
-✅ User can add training data through UI
+✅ Confidence scoring with colour feedback
+✅ **Sentence builder with guided keyboard input** *(new)*
+✅ **4 accessibility colour themes** *(new)*
+✅ **Adjustable font size** *(new)*
+✅ **Custom Flask frontend — no Streamlit glitching** *(new)*
+✅ Three modes: Learn, Practice, Sentence
+✅ User can add training data via data collection scripts
 
 ---
 
 ## 🛠️ Dependencies
 
-**Core Libraries:**
+**Backend:**
+- `flask` - Web server
 - `mediapipe` - Hand landmark detection
 - `opencv-python` - Camera and video processing
 - `numpy` - Mathematical operations
-- `streamlit` - Web interface framework
 
-**Standard Library:**
-- `json` - Data storage
-- `os` - File operations
-- `time` - Timing operations
-- `collections` - Data structures
+**Frontend (loaded via CDN — no install needed):**
+- `@mediapipe/hands` - Browser-side hand detection
+- `@mediapipe/camera_utils` - Browser camera access
+- `Google Fonts (Syne, DM Mono)` - Typography
 
 See `requirements.txt` for exact versions.
 
 ---
 
-## 🎓 Approaches Explained
+## 🎓 Design Decisions
 
-### Why Template Matching Instead of Deep Learning?
+### Why Keyboard-Guided Input for Sentence Builder?
 
-**Template matching (K-NN)** was chosen for several reasons:
-1. **Time constraint:** One-week project timeline
-2. **Data size:** 390 samples is sufficient for template matching but insufficient for neural networks (which typically need 1000+ samples)
-3. **Simplicity:** Easier to implement, debug, and understand
-4. **Interpretability:** Clear why a prediction was made (closest match)
-5. **No training time:** Instant setup, no GPU required
+Free-form recognition (sign any letter, system guesses) was implemented and tested but proved unreliable for a demo due to the limited training dataset (390 samples). A guided approach — where the user selects the target letter first — was chosen because:
 
-**Trade-off:** Lower accuracy (70-80%) vs deep learning (85-95%), but acceptable for an MVP.
+1. **Reliability:** The system only needs to confirm one specific letter, not guess from 26
+2. **UX:** Real assistive technology (AAC devices) uses guided input for the same reason
+3. **Feedback:** Live confidence score tells the user exactly how well they're signing
+4. **Accuracy:** Effectively 100% when the user holds the correct sign confidently
 
-### Finalized Approach Details
+### Why Flask Instead of Streamlit?
 
-**Hand Detection Pipeline:**
-```
-Camera Frame → MediaPipe Hand Detection → 21 Landmarks (x,y,z) → Normalization
-```
-
-**Classification Pipeline:**
-```
-Normalized Landmarks → Distance Calculation (all 390 samples) → Closest Match → Smoothing → Result + Confidence
-```
-
-**Normalization:**
-- Center around wrist: `centered = landmarks - wrist_position`
-- Scale by hand size: `normalized = centered / hand_size`
-- Result: Position and scale invariant features
-
-**Distance Metric:**
-- Euclidean distance: `distance = sqrt(sum((current - sample)²))`
-- Average of top-3 closest samples per letter for stability
-- Confidence: `confidence = 1 / (1 + distance * 0.5)`
-
-**Smoothing:**
-- Buffer size: 5 predictions
-- Method: Mode (most common prediction in buffer)
-- Threshold: Minimum 3 predictions before returning result
+Streamlit rerenders the entire page on every state change, causing the camera to restart and flicker every time a letter is added. Flask with a custom JS frontend keeps the camera running continuously in the browser, making the sentence builder smooth and usable.
 
 ---
 
-## 🔮 Future Considerations
+## 🔮 Future Improvements
 
-### Short-Term Improvements
-- Increase accuracy to 85-90% with more training data
-- Optimize dynamic letter detection with proper motion tracking
-- Implement neural network classifier (CNN or LSTM)
-- Add data augmentation techniques
-- Improve UI/UX design and animations
-
-### Long-Term Vision
-- Expand to full NGT vocabulary (not just fingerspelling)
-- Add sentence building and word recognition
-- Develop mobile app (iOS/Android)
-- Real-time sentence translation
-- Multi-user training data collection
-- Support for other sign languages (ASL, BSL, etc.)
-- Collaboration with deaf community for validation
+- Increase training data for better free-form recognition accuracy
+- CNN/LSTM classifier for higher accuracy
+- Full NGT vocabulary beyond fingerspelling
+- Mobile app version
 - Deploy as public web service
-- Integration with educational platforms
-
-### Technical Enhancements
-- Implement convolutional neural network for higher accuracy
-- Use transfer learning from larger sign language datasets
-- Add temporal models (LSTM/GRU) for better dynamic letter handling
-- Implement attention mechanisms for feature weighting
-- Add data augmentation (rotation, scaling, noise)
-- Create confidence calibration for better uncertainty estimates
 
 ---
 
 ## 📝 Usage Notes
 
 ### For Best Results:
-- Use good lighting (natural light or room light)
+- Use good lighting
 - Position hand clearly in camera view
-- Hold static letters steady for 1-2 seconds
-- Perform dynamic letters (H, J, U, X, Z) smoothly
+- Hold static letters steady until the bar fills
+- Perform dynamic letters (H, J, U, X, Z) smoothly during the recording window
 - Use mirror mode if you're left-handed
+- Use Chrome for the Flask app
 
 ### Known Limitations:
-- Similar letters (M/N, R/U) may be confused
-- Requires clear hand visibility (no partial occlusion)
+- Similar letters (M/N, E/S) may be confused with limited training data
 - Dynamic letters have lower accuracy than static
-- Camera must be functional and accessible
-- Works best with neutral background
+- Best results with neutral background
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "Cannot open camera"
-- Check if camera is connected and functional
-- Close other applications using the camera (Zoom, Teams, etc.)
-- Try different camera index: `cv2.VideoCapture(1)` instead of `(0)`
-- On Mac: Grant camera permissions in System Preferences
+### Flask app — "No reference data found"
+- Make sure you run `python app.py` from inside the `ngt_flask/` folder
+- Check that `data/reference/` exists in the project root with `.json` files
 
 ### "ModuleNotFoundError"
-- Ensure conda environment is activated: `conda activate signlang`
-- Reinstall requirements: `pip install -r requirements.txt`
-- Check Python version: `python --version` (should be 3.11+)
+- Activate environment: `conda activate signlang`
+- Reinstall: `pip install -r requirements.txt`
 
-### "Streamlit command not found"
-- Activate environment first: `conda activate signlang`
-- Reinstall Streamlit: `pip install streamlit`
-- Use full path: `python -m streamlit run src/ui.py`
+### Camera not working in browser
+- Use Chrome (not Firefox or Edge)
+- Allow camera permissions when prompted
+- Close other apps using the camera (Zoom, Teams, etc.)
 
-### Low accuracy / not recognizing letters
-- Ensure you've recorded training data (check `data/reference/` folder)
-- Try adjusting hand position/distance
-- Use better lighting
+### Low accuracy
+- Record more training samples via `data_collection.py`
+- Ensure good lighting and clear hand position
 - Enable mirror mode if using left hand
-- Record more training samples for problematic letters
 
 ---
 
 ## 📄 License
 
-Educational project - Breda University of Applied Sciences
+Educational project — Breda University of Applied Sciences
 
 ---
 
 ## 🙏 Acknowledgments
 
-- Nienke Fluitman - NGT Teacher & Project Sponsor
-- Irene van Blerck / Karna Rewatkar - Project Supervisors
-- Google MediaPipe Team - Hand tracking technology
-- Dutch Deaf Community - Inspiration and purpose
+- Nienke Fluitman — NGT Teacher & Project Sponsor
+- Irene van Blerck / Karna Rewatkar — Project Supervisors
+- Google MediaPipe Team — Hand tracking technology
+- Dutch Deaf Community — Inspiration and purpose
 
 ---
 
-## 📧 Contact
-
-For questions or feedback about this project:
-- GitHub: [KhaledAllouh251769](https://github.com/KhaledAllouh251769)
-- Repository: [sign-language-ngt-challenge](https://github.com/KhaledAllouh251769/sign-language-ngt-challenge)
-
----
-
-**Built with ❤️ in two weeks for the ADS&AI Sign Language Challenge**
+**Built with ❤️ for the ADS&AI Sign Language Challenge — Breda University of Applied Sciences**
