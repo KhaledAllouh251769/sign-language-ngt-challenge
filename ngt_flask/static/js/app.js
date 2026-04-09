@@ -369,3 +369,138 @@ buildKeyboard();
 buildLearn();
 renderSentence();
 document.getElementById('cameraPanel').style.display = 'none';
+
+// ── Record mode ───────────────────────────────────────────────────────────────
+const DYNAMIC = new Set(['H','J','U','X','Z']);
+
+// Populate letter select
+const recordLetterEl = document.getElementById('recordLetter');
+for (const l of ALPHA) {
+  const opt = document.createElement('option');
+  opt.value = opt.textContent = l;
+  recordLetterEl.appendChild(opt);
+}
+
+function updateRecordInfo() {
+  const letter    = recordLetterEl.value;
+  const typeTag   = document.getElementById('recordTypeTag');
+  const letterBig = document.getElementById('recordLetterBig');
+  letterBig.textContent = letter;
+  if (DYNAMIC.has(letter)) {
+    typeTag.textContent  = '⚡ Dynamic — perform motion';
+    typeTag.className    = 'learn-badge dynamic';
+  } else {
+    typeTag.textContent  = '✋ Static — hold position';
+    typeTag.className    = 'learn-badge static';
+  }
+}
+recordLetterEl.addEventListener('change', updateRecordInfo);
+updateRecordInfo();
+
+// Start record camera when page is opened
+let recordCam = null;
+let recordLandmarks = null;
+
+function startRecordCamera() {
+  if (recordCam) return;
+  const video   = document.getElementById('recordVideo');
+  const overlay = document.getElementById('recordOverlay');
+  recordCam = initHands(video, (results) => {
+    const lms = extractLandmarks(results, state.mirror);
+    overlay.width  = video.videoWidth  || 640;
+    overlay.height = video.videoHeight || 480;
+    drawHand(overlay, lms);
+    recordLandmarks = lms;
+  });
+}
+
+function stopRecordCamera() {
+  if (recordCam) { recordCam.stop(); recordCam = null; }
+}
+
+// Hook into nav to start/stop camera
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.page === 'record') {
+      setTimeout(startRecordCamera, 300);
+    } else {
+      stopRecordCamera();
+    }
+  });
+});
+
+// Record button
+document.getElementById('recordBtn').addEventListener('click', async () => {
+  const name   = document.getElementById('recordName').value.trim();
+  const letter = recordLetterEl.value;
+
+  if (!name) {
+    addLog('Please enter your name first', true);
+    return;
+  }
+
+  const btn       = document.getElementById('recordBtn');
+  const status    = document.getElementById('recordStatus');
+  const countdown = document.getElementById('recordCountdown');
+  const progress  = document.getElementById('recordProgress');
+  btn.disabled    = true;
+
+  // Countdown 3 → 2 → 1
+  for (let i = 3; i >= 1; i--) {
+    countdown.textContent = i;
+    countdown.classList.add('visible');
+    status.innerHTML = `<p>Get ready... ${i}</p>`;
+    await sleep(1000);
+  }
+  countdown.classList.remove('visible');
+
+  // Record for 2 seconds
+  status.innerHTML = '<p style="color:var(--danger)">🔴 Recording now — sign the letter!</p>';
+  const frames    = [];
+  const duration  = 2000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < duration) {
+    if (recordLandmarks) frames.push(recordLandmarks);
+    const frac = (Date.now() - startTime) / duration;
+    progress.style.width = (frac * 100) + '%';
+    await sleep(50);
+  }
+  progress.style.width = '100%';
+
+  // Send to Flask
+  status.innerHTML = '<p>Saving...</p>';
+  try {
+    const res = await fetch('/save_sample', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ letter, person_name: name, frames }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById('sampleCount').textContent = `${data.total_samples} samples saved`;
+      addLog(`✅ Sample saved! Total: ${data.total_samples}`);
+      status.innerHTML = '<p style="color:var(--success)">✅ Saved! Record another?</p>';
+    } else {
+      addLog(`❌ ${data.error}`, true);
+      status.innerHTML = `<p style="color:var(--danger)">❌ ${data.error}</p>`;
+    }
+  } catch (e) {
+    addLog('❌ Failed to save', true);
+    status.innerHTML = '<p style="color:var(--danger)">❌ Save failed</p>';
+  }
+
+  progress.style.width = '0%';
+  btn.disabled = false;
+});
+
+function addLog(msg, isError = false) {
+  const log   = document.getElementById('recordLog');
+  const entry = document.createElement('div');
+  entry.className   = 'log-entry' + (isError ? ' error' : '');
+  entry.textContent = msg;
+  log.prepend(entry);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

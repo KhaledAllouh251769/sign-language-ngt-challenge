@@ -24,18 +24,43 @@ def index():
 
 @app.route('/classify', methods=['POST'])
 def classify():
-    """
-    Receives landmarks from the browser (21 x [x,y,z] points)
-    and returns the classified letter + confidence.
-    """
     data = request.get_json()
     landmarks = data.get('landmarks')
-    
     if not landmarks or len(landmarks) != 21:
         return jsonify({'letter': None, 'confidence': 0})
-
     letter, confidence = classifier.classify_letter(landmarks, use_smoothing=False)
     return jsonify({'letter': letter, 'confidence': round(float(confidence), 3)})
+
+@app.route('/save_sample', methods=['POST'])
+def save_sample():
+    import json
+    data        = request.get_json()
+    letter      = data.get('letter', '').upper()
+    person_name = data.get('person_name', '').strip()
+    frames      = data.get('frames', [])
+
+    if not letter or not person_name or not frames:
+        return jsonify({'success': False, 'error': 'Missing data'})
+    if len(frames) < 5:
+        return jsonify({'success': False, 'error': 'Not enough frames'})
+
+    data_dir = 'data/reference'
+    os.makedirs(data_dir, exist_ok=True)
+    filepath = os.path.join(data_dir, f'{letter}_{person_name}.json')
+
+    existing = []
+    if os.path.exists(filepath):
+        with open(filepath, 'r') as f:
+            existing = json.load(f)
+
+    averaged = np.mean(frames, axis=0).tolist()
+    existing.append(averaged)
+
+    with open(filepath, 'w') as f:
+        json.dump(existing, f)
+
+    classifier.load_reference_data()
+    return jsonify({'success': True, 'total_samples': len(existing)})
 
 if __name__ == '__main__':
     print("="*50)
